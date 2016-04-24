@@ -47,7 +47,8 @@ TestClassRunner.test_nominal = function(self)
     cr:setSilent(true) -- true is redundant
     assertEquals(cr:getOutput(), '')
     cr:run()
-    assertEquals({a,b,c,d}, {1,3,3,1}, 'call frequency of setups/teardowns')
+    assertEquals({a,b,c,d}, {1,3,3,1}, 
+                 'call frequency of setups/teardowns')
     assertEquals({cr:getResults()}, {3, {}, 0},
                  'three successes, no failures, no skips')
     assertEquals(cr:getOutput(), 
@@ -64,30 +65,34 @@ TestClassRunner.test_specified = function(self)
     assertEquals(ran, 3)
     assertEquals(#fails, 1)
     assertEquals(#fails[1], 3)
-    assertEquals(fails[1][1], 'fail_function')
-    assertEquals(fails[1][2], 'test_classrunner.lua:31: assertion failed!')
-    assertString(fails[1][2], 'stack traceback expected here')
+    local name, msg, stack = fails[1][1], fails[1][2], fails[1][3]
+    assertEquals(name, 'fail_function')
+    assertEquals(msg, 'test_classrunner.lua:31: assertion failed!')
+    assertString(stack, 'stack traceback expected here')
     assertEquals(skips, 1)
     assertEquals(cr:getOutput(), 
                  'UnTestTiti\n  [testb]\tOk\n  [test1]\tOk\n  '..
                  '[t2]\tAbsent\n  [fail_function]\tFailed\n')
 end
-TestClassRunner.test_rerun = function(self)
+TestClassRunner.test_build_class = function(self)
+    local cr = ClassRunner.new('MyTestClass')
+    cr:addTest('some_function')
+    cr:setSilent()
+    cr:run()
+    assertEquals(cr:getOutput(), 'MyTestClass\n  [some_function]\tOk\n')
+end
+TestClassRunner.test_rerun_resets = function(self)
     local cr = ClassRunner.new('UnTestTiti')
     cr:setSilent()
     cr:run()
-    assertEquals(3, cr:getResults()) -- tests a b and 3
+    assertEquals( {cr:getResults()}, {3, {}, 0})
+    assertEquals(cr:getOutput(),
+                 'UnTestTiti\n  [test1]\tOk\n  [test3]\tOk\n  [testb]\tOk\n')
     cr:addTest('some_function')
     cr:run('some_function', 'testb')
+    assertEquals( {cr:getResults()}, {2, {}, 0}) -- ran some_function and testb
     assertEquals(cr:getOutput(), 
                  'UnTestTiti\n  [some_function]\tOk\n  [testb]\tOk\n')
-end
-TestClassRunner.test_build_class = function(self)
-    local cr = ClassRunner.new('MyTestClass')
-    cr:setSilent()
-    cr:addTest('some_function')
-    cr:run()
-    assertEquals(cr:getOutput(), 'MyTestClass\n  [some_function]\tOk\n')
 end
 
 
@@ -102,24 +107,39 @@ TestVerbosity.setUp = function(self)
     self.cr:addTest('fail_function')
     self.cr:setSilent() -- do not print while running
 end
-TestVerbosity.tearDown = function(self)
-    ClassRunner:setVerbosity()
-end
-TestVerbosity.test_v0 = function(self)
+TestVerbosity.test_terse_set = function(self)
     self.cr:setVerbosity(0)
     self.cr:run()
     local total, fails = self.cr:getResults()
     assertEquals(total, 2)
-    assertEquals(self.cr:getOutput(),
-                'TestAbsentClass\tF.\n')
+    assertEquals(self.cr:getOutput(), 'TestAbsentClass\tF.\n')
     local name, msg, stack = fails[1][1], fails[1][2], fails[1][3]
-    assertNil(fails[2], 'only one failure')
-    assertEquals(name, 'fail_function', 'failing function name')
+    assertEquals(#fails, 1)
+    assertEquals(name, 'fail_function', 
+                 'failing function name')
     assertEquals(msg, 'test_classrunner.lua:31: assertion failed!',
-                'failing function message')
-    assertNotNil(stack:find('in function'), 'peek at stacktrace')
+                 'failing function message')
+    assertNotNil(stack:find('in function'), 
+                 'peek at stacktrace')
 end
-TestVerbosity.test_v1_default = function(self)
+TestVerbosity.test_terse_param = function(self)
+    local runnerWithParam = ClassRunner.new('TestVerbParam', 0)
+    runnerWithParam:addTest('some_function')
+    runnerWithParam:addTest('fail_function')
+    runnerWithParam:setSilent()
+    runnerWithParam:run()
+    assertEquals(runnerWithParam:getOutput(), 'TestVerbParam\tF.\n')
+    local total, fails = runnerWithParam:getResults()
+    local name, msg, stack = fails[1][1], fails[1][2], fails[1][3]
+    assertEquals(#fails, 1)
+    assertEquals(name, 'fail_function', 
+                 'failing function name')
+    assertEquals(msg, 'test_classrunner.lua:31: assertion failed!',
+                 'failing function message')
+    assertNotNil(stack:find('in function'), 
+                 'peek at stacktrace')
+end
+TestVerbosity.test_verbose = function(self)
     assertEquals(self.cr:getVerbosity(), 1) -- default verbosity
     self.cr:run()
     local total, fails = self.cr:getResults()
@@ -130,6 +150,17 @@ TestVerbosity.test_v1_default = function(self)
   [some_function]	Ok
 ]])
     assertNotNil(fails[1][3]:find('in function'))
+end
+TestVerbosity.test_module_set = function(self)
+    local default, runner = ClassRunner.getVerbosity(), nil
+    assertEquals(default, 1)
+    for i = 0, 5 do
+        ClassRunner.setVerbosity(i)
+        runner = ClassRunner.new('TestClass')
+        assertEquals(runner:getVerbosity(), i)
+    end
+    ClassRunner.setVerbosity(nil)
+    assertEquals(ClassRunner.getVerbosity(), default)
 end
 
 

@@ -1,6 +1,7 @@
--- TODO: module info
+---Module responsible for running a single test class;
+-- can be used stand-alone from LuaUnit if desired.
 
--- change this value in the file if you must; 'absolute reference' for setter
+--'absolute reference' for setter
 local DEFAULT_VERBOSITY = 1
 
 local stringbuffer = require 'lua_stringbuffer'
@@ -58,7 +59,7 @@ local Runner = {_VERSION  = '1.0.0',
 -- @param name {String} Name of a function in global namespace.
 -- TODO: param to specify order?
 -- @error iff name is not string or function not found
-Runner.addTest = function(self, name)
+local function addTest(self, name)
     assert(type(name) == 'string')
     assert(type(_G[name] ) == 'function')
     if #self.tests == 0 then
@@ -83,12 +84,12 @@ Runner.addTest = function(self, name)
 end
 
 ---(ClassRunner):getName()
-Runner.getName = function(self)
+local function getName(self)
     return self.name
 end
 
 ---(ClassRunner):getResults()
-Runner.getResults = function(self)
+local function getResults(self)
     return self.results:getRunCount(), self.results:getFailures(), self.results:getSkippedCount()
 end
 
@@ -96,7 +97,7 @@ end
 -- Universal call to handle output; will add to accumulated output iff flagged,
 -- else prints to stdout.
 -- @param s {String} Literal to output.
-Runner.appendOutput = function(self, s)
+local function appendOutput(self, s)
     self.buffer:add(s)
     if not self.silent then
         io.stdout:write(s)
@@ -106,7 +107,7 @@ end
 ---(ClassRunner):setSilent(flag)
 -- Runner will not print as tests execute
 -- @param flag {Boolean} (default true)
-Runner.setSilent = function(self, flag)
+local function setSilent(self, flag)
     flag = flag or true
     assert (type(flag) == 'boolean', 'flag must be boolean')
     self.silent = flag
@@ -116,7 +117,7 @@ end
 -- Get the accumulated output, if any.
 -- @return {String} Any redirected output if set to accumulate;
 --         else nil.
-Runner.getOutput = function(self)
+local function getOutput(self)
     --if not self.shouldAccumulated then return end
     if not self.buffer then return '' end
     return self.buffer:getString()
@@ -136,7 +137,7 @@ end
 ---(ClassRunner):_runMethod(name)
 -- Run a single test method and any before/after routines.
 -- @param name {String} Name of the test routine.
-Runner.runMethod = function(self, name)
+local function runMethod(self, name)
     if self.verbosity > 0 then
         self:_appendOutput('\n  ['..name..']\t')
     end
@@ -186,7 +187,7 @@ end
 -- @param ... {String, String} Optional sequence (in order) of tests;
 --            overrides any auto-generated test listing.
 -- @error Iff any of the passed arguments are not a {String}.
-Runner.run = function(self, ...)
+local function run(self, ...)
     -- use tests if provided manually (but make sure they're name strings)
     local tests = {...}
     if #tests > 0 then
@@ -213,7 +214,6 @@ Runner.run = function(self, ...)
     end
     tests, seenset = seenset, nil
     
-    -- TODO: undocumented! self-reset between run calls
     self.results = Result.new()
     self.buffer = stringbuffer.new()
     
@@ -243,12 +243,12 @@ end
 local _cic = _crIdClosure()
 
 ---(ClassRunner):getVerbosity
-Runner.getVerbosity = function(self)
+local function getVerbosity(self)
     return self.verbosity
 end
 
 ---(ClassRunner):setVerbosity(v)
-Runner.setVerbosity = function(self, v)
+local function setVerbosity(self, v)
     v = v or DEFAULT_VERBOSITY
     assert (type(v) == 'number', 'verbosity must be a number')
     self.verbosity = v
@@ -286,6 +286,18 @@ local function _getAlphabeticalTestNames(t)
     return list
 end
 
+---ClassRunner:getVerbosity()
+-- @return current value of the module's verbosity setting.
+Runner.getVerbosity = function(self)
+    return Runner.verbosity
+end
+
+---ClassRunner:setVerbosity([level])
+-- @param level (default DEFAULT_VERBOSITY).
+Runner.setVerbosity = function(level)
+    Runner.verbosity = level or DEFAULT_VERBOSITY
+end
+
 ---ClassRunner.new([classname], [verbosity])
 -- @param classname {String} Optional argument;
 --                  iff _G[classname] exists and is a table, it will try to
@@ -294,9 +306,9 @@ end
 -- @return new ClassRunner.
 Runner.new = function(classname, verbosity)
     classname = classname or 'ClassRunner'..tostring(_cic())
-    assert(type(classname) == 'string', 'classname must be a string')
     verbosity = verbosity or Runner.verbosity
-    assert (type(verbosity) == 'number', 'verbosity must be a number')
+    assert(type(classname) == 'string', 'classname must be a string')
+    assert(type(verbosity) == 'number', 'verbosity must be a number')
     local testclass, testlist = {}, {}
     if type(_G[classname]) == 'table' then
         testclass = _G[classname]
@@ -307,16 +319,16 @@ Runner.new = function(classname, verbosity)
             results   = Result.new(),
             tests     = testlist, 
             verbosity = verbosity,
-            setSilent    = Runner.setSilent,
-            addTest      = Runner.addTest,
-            _appendOutput = Runner.appendOutput,
-            getOutput    = Runner.getOutput,
-            getName      = Runner.getName,
-            getVerbosity = Runner.getVerbosity,
-            setVerbosity = Runner.setVerbosity,
-            getResults   = Runner.getResults,
-            run          = Runner.run,
-            _runMethod   = Runner.runMethod,
+            setSilent    = setSilent,
+            addTest      = addTest,
+            _appendOutput = appendOutput,
+            getOutput    = getOutput,
+            getName      = getName,
+            getVerbosity = getVerbosity,
+            setVerbosity = setVerbosity,
+            getResults   = getResults,
+            run          = run,
+            _runMethod   = runMethod,
     }
 end
 
