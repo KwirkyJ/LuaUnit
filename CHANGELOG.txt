@@ -1,0 +1,93 @@
+
+[3.0]
+- Changes made by KwirkyJ
+- Updated compatability for Lua 5.2+ (notably unpack and loadstring).
+- Major overhaul of inner workings; 
+      most previous code will work without change but some involved scripts 
+      (playing with LuaUnit inner variables,e.g.) may fail.
+- Added assertNot and assert_not
+- Added assertAlmostEquals and assert_almost_equals
+- Modified ALL assert methods to accept optional error message:
+    assertEquals(actual, expected, "this if fails"),
+    assertTable(t, "t had better be a table or else"), &c.;
+    + assertError requires special mention:
+      all other asserts follow built-in assert of message as last param;
+      because of vararg in assertError, it handles things differently:
+        assertError(f, ...) expects f to fail with the given args;
+        assertError('err', f, ...) expects f to fail with the given args 
+            and output the given message (err must be a string) ;
+        assertError('msg', {'err' | nil}, f, ...) expects f to fail 
+            and err (if provided) to be the error message generated 
+                (must be string OR nil) ;
+            and msg will be output if method does not fail
+                or generated message does not match 'err' (if provided);
+    see test_assert for more information and many examples.
+- Renamed USE_EXPECTED_ACTUAL_IN ASSERT_EQUALS to USE_EXPECTED_ACTUAL.
+- Added setter method to hide inner variable and check type:
+    LuaUnit:setExpectedActual(boolean)
+- Added variable DELTA_TOLERANCE for the default delta in assertAlmostEquals.
+- Addded setter getter methods for:
+    VERBOSITY       LuaUnit:getVerbosity()      LuaUnit:setVerbosity(lvl)
+    DELTA_TOLERANCE LuaUnit:getDeltaTolerance() LuaUnit:setDeltaTolerance(n)
+- Now properly accepts test targets via command-line,
+    e.g., `lua test_file.lua TestClass1, TestClass2`.
+- Refactored out separate modules with routines that are generally useful:
+    moretables (table-printing; table-comparison)
+    stringbuffer (string buffers) 
+    stringsplit (split a string into a list around delimiters)
+    asserts (semi-lightweight stand-alone library for assert patterns)
+- Moved changelog from luaunit.lua to new file, CHANGELOG.txt, and
+    tidied the version history.
+
+[2.0]
+- This is a major update that has some breaking changes to make it much more easy to use and code in many different styles
+- Made the module only touch the global table for the asserts. You now use the module much more like Lua 5.2 when you require it.
+  You need to store the LuaUnit table after you require it to allow you access to the LuaUnit methods and variables.
+  (ex. local LuaUnit = require( "luaunit" ))
+- Made changes to the style of which LuaUnit forced users to code there test classes. It now is more layed back and give the ability to code in a few styles.
+    - Made "testable" classes able to start with 'test' or 'Test' for their name.
+    - Made "testable" methods able to start with 'test' or 'Test' for their name.
+    - Made testClass:setUp() methods able to be named with 'setUp' or 'Setup' or 'setup'.
+    - Made testClass:tearDown() methods able to be named with 'tearDown' or 'TearDown' or 'teardown'.
+    - Made LuaUnit.wrapFunctions() function able to be called with 'wrapFunctions' or 'WrapFunctions' or 'wrap_functions'.
+    - Made LuaUnit:run() method able to be called with 'run' or 'Run'.
+- Added the ability to tell if tables are equal using assertEquals. This uses a deep compare, not just the equality that they are the same memory address.
+- Added LuaUnit.is<Type> and LuaUnit.is_<type> helper functions. (e.g. assert( LuaUnit.isString( getString() ) )
+- Added assert<Type> and assert_<type> 
+- Added assertNot<Type> and assert_not_<type>
+- Added _VERSION variable to hold the LuaUnit version
+- Added LuaUnit:setVerbosity(lvl) method to the LuaUnit table to allow you to control the verbosity now. If lvl is greater than 1 it will give verbose output.
+  This can be called from alias of LuaUnit.SetVerbosity() and LuaUnit:set_verbosity().
+- Moved wrapFunctions to the LuaUnit module table (e.g. local LuaUnit = require( "luaunit" ); LuaUnit.wrapFunctions( ... ) )
+- Fixed the verbosity to actually format in a way that is closer to other unit testing frameworks I have used.
+  NOTE: This is not the only way, I just thought the old output was way to verbose and duplicated the errors.
+- Made the errors only show in the "test report" section (at the end of the run)
+
+[1.3]
+- port to lua 5.1
+- use orderedPairs() to iterate over a table in the right order
+- change the order of expected, actual in assertEquals() and the default value of
+  USE_EXPECTED_ACTUAL_IN_ASSERT_EQUALS. This can be adjusted with
+  USE_EXPECTED_ACTUAL_IN_ASSERT_EQUALS.
+
+[1.2a]
+- fix: test classes were not run in the right order
+
+[1.2]
+- tests are now run in alphabetical order
+- fix a bug that would prevent all tests from being run
+
+[1.1]
+- internal variables are not global anymore
+- you can choose between assertEquals( actual, expected) or assertEquals(
+  expected, actual )
+- you can assert for an error: assertError( f, a, b ) will assert that calling
+  the function f(a,b) generates an error
+- display the calling stack when an error is spotted
+- a dedicated class collects and displays the result, to provide easy
+  customisation
+- two verbosity level, like in python unittest
+
+[1.0]
+- initial release
+
