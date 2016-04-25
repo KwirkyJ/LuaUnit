@@ -29,7 +29,7 @@ local classrunner  = require 'luaunit.classrunner'
 local assertive    = require 'assertive'
 --local StringBuffer = require 'lua_stringbuffer'
 local toString = require('moretables')['tostring']
-local strsplit = require('stringsplit')['split']
+local strsplit = require('luaunit.lib.stringsplit')['split']
 
 ---- HELPER FUNCTIONS --------------------------------------------------------
 
