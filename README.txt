@@ -1,3 +1,7 @@
+LuaUnit v3.0 by KwirkyJ
+
+OLD README:
+
 		luaunit.lua  by Philippe Fremy
 
 Luaunit is a testing framework for Lua, in the spirit of Extrem Programming.
