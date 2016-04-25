@@ -6,7 +6,7 @@
 -- Initial author: Ryu, Gwang (http://www.gpgstudy.com/gpgiki/LuaUnit)
 -- Lot of improvements by Philippe Fremy <phil@freehackers.org>
 -- More improvements by Ryan P. <rjpcomputing@gmail.com>
--- Further improvements by J. 'KwirkyJ' Smith <TODO@EMAIL.DOM>
+-- Further improvements by J. 'KwirkyJ' Smith <kwirkyj.smith0@gmail.com>
 -- Version: 3.0
 -- License: X11 License, see LICENSE.txt
 
@@ -27,13 +27,11 @@ local VERBOSITY = 1
 
 local classrunner  = require 'luaunit.classrunner'
 local assertive    = require 'assertive'
-local StringBuffer = require 'lua_stringbuffer'
+--local StringBuffer = require 'lua_stringbuffer'
 local toString = require('moretables')['tostring']
 local strsplit = require('stringsplit')['split']
 
 ---- HELPER FUNCTIONS --------------------------------------------------------
-
-local orderedPairs;
 
 ---Wrapper for tostring to differentiate string types.
 -- @param v Value to convert to string.
@@ -104,6 +102,7 @@ orderedPairs = function(t) -- filling forward definition; is local
 end
 --]]
 
+--[[
 ---Removes some information from stacktrace to be relevant to the tests.
 local function strip_luaunit_stack(stack_trace)
     local stack_list = strsplit( "\n", stack_trace )
@@ -121,25 +120,20 @@ local function strip_luaunit_stack(stack_trace)
     local stack_trace = table.concat( stack_list, "\n" )
     return stack_trace
 end
+--]]
 
----Trim a string like 'test_file.lua:125: assertion failed!\n' 
--- to 'assertion failed!'
+---Trim a string like 
+-- 'test_file.lua:125: assertion failed!\n' to
+-- 'assertion failed!'
 -- @param s {String}
--- @error Iff s is not a {String}.
+-- @error Raised if s is not a {String}.
 -- @return {String}
-local function stripErrMsgHeader(s)
+local function trimErrMsg(s)
     assert (type(s) == 'string', 's must be a string!')
     s = s:gsub('^%s*(.-)%s*$', '%1') -- remove whitspace
     return s:gsub('.*:%d+: (.-)', '%1') -- assuming ':%d+: ' is the line num
 end
 
----Method passed to xpcall when running a test function.
-local function _err_handler(e)
-    if VERBOSITY > 0 then
-        return e..'\n'..debug.traceback()
-    end
-    return e..'\n'
-end
 
 
 ---- ASSERT ROUTINES ---------------------------------------------------------
@@ -166,15 +160,7 @@ end
 
 ---- LUAUNIT CLASS -----------------------------------------------------------
 
-local LuaUnit = {
-    result = UnitResult,
-    _VERSION = "3.0.0",
-    -- register below routines for verifying correctness in unit test
-    _strsplit = strsplit,
-    _toString = toString,
-    _wrapValue = wrapValue,
-    _stripErrMsgHeader = stripErrMsgHeader
-}
+local LuaUnit = { _VERSION = "3.0.0" }
 
 --[[
 ---Get the current verbosity level.
@@ -199,7 +185,9 @@ end
 LuaUnit.setVerbosity  = setVerbosity
 LuaUnit.set_verbosity = setVerbosity
 LuaUnit.SetVerbosity  = setVerbosity
+--]]
 
+--[[
 ---Get the current verbosity level.
 -- LuaUnit:getDeltaTolerance()
 --@return {Number} >= 0.
@@ -236,106 +224,11 @@ LuaUnit.setExpectedActual   = setExpectedActual
 LuaUnit.set_expected_actual = setExpectedActual
 --]]
 
---[[
--- Used to wrap a set of functions into a Runnable test class:
--- TestToto = wrapFunctions( f1, f2, f3, f3, f5 )
--- Now, TestToto will be picked up by LuaUnit:run()
-function LuaUnit.wrapFunctions(...)
-    local testClass, testFunction = {}, nil
-    local function storeAsMethod(idx, testName)
-        testFunction = _G[testName]
-        testClass[testName] = testFunction
-    end
-    for i, v in ipairs {...} do 
-        storeAsMethod(i, v) 
-    end
-    return testClass
-end
--- Other aliases
-LuaUnit.wrap_functions = LuaUnit.wrapFunctions
-LuaUnit.WrapFunctions = LuaUnit.wrapFunctions
 
-function LuaUnit:runTestMethod(aName, aClassInstance, aMethod)
-    local ok, errorMsg
-    -- example: runTestMethod( 'TestToto:test1', TestToto, TestToto.testToto(self) )
-    LuaUnit.result:startTest(aName)
-    
-    -- run setUp first(if any)
-    for _,v in ipairs{'setUp', 'Setup', 'setup'} do
-        if type(aClassInstance[v]) == 'function' then
-            aClassInstance[v](aClassInstance)
-        end
-    end
-
-    local function err_handler(e)
-        if self.result.verbosity > 0 then
-            return e..'\n'..debug.traceback()
-        end
-        return e..'\n'
-    end
-
-    -- run testMethod()
-    local ok, errorMsg = xpcall( aMethod, err_handler )
-    if not ok then
-        errorMsg = strip_luaunit_stack(errorMsg)
-        LuaUnit.result:addFailure( errorMsg )
-    end
-
-    -- lastly, run tearDown(if any)
-    for _,v in ipairs{'tearDown', 'TearDown', 'teardown'} do
-        if type(aClassInstance[v]) == 'function' then
-            aClassInstance[v](aClassInstance)
-        end
-    end
-
-    self.result:endTest()
-end
-    
-function LuaUnit:runTestMethodName(methodName, classInstance)
-    local methodInstance = loadstring(methodName .. '()')
-    LuaUnit:runTestMethod(methodName, classInstance, methodInstance)
-end
-
-function LuaUnit:runTestClassByName(aClassName)
-    --assert("table" == type(aClassName), ("bad argument #1 to 'runTestClassByName' (string expected, got %s). Make sure you are not trying to just pass functions not part of a class."):format(type(aClassName)))
-    -- example: runTestMethodName( 'TestToto' )
-    local hasMethod, methodName, classInstance
-    hasMethod = string.find(aClassName, ':' )
-    if hasMethod then
-        methodName = string.sub(aClassName, hasMethod+1)
-        aClassName = string.sub(aClassName,1,hasMethod-1)
-    end
-    classInstance = _G[aClassName]
-    if "table" ~= type(classInstance) then
-        error("No such class: "..aClassName)
-    end
-
-    LuaUnit.result:startClass( aClassName )
-
-    if hasMethod then
-        if not classInstance[ methodName ] then
-            error( "No such method: "..methodName )
-        end
-        LuaUnit:runTestMethodName( aClassName..':'.. methodName, classInstance )
-    else
-        -- run all test methods of the class
-        for methodName, method in orderedPairs(classInstance) do
-        --for methodName, method in classInstance do
-            if  type(method) == 'function' --LuaUnit.isFunction(method) and 
-            and (string.sub(methodName, 1, 4) == "test"
-                 or string.sub(methodName, 1, 4) == "Test")
-            then
-                LuaUnit:runTestMethodName( aClassName..':'.. methodName, classInstance )
-            end
-        end
-    end
-end
---]]
 
 local function runAllTests(runners)
-    local runsum, failsum, byesum, failslist, runner = 0, 0, 0, {}, nil
-    for i=1, #runners do
-        runner = runners[i]
+    local runsum, failsum, byesum, failslist = 0, 0, 0, {}
+    for _, runner in ipairs(runners) do
         runner:run()
         local runcount, fails, byecount = runner:getResults()
         runsum = runsum + runcount
@@ -366,7 +259,7 @@ local function printFailures(faillist, verbosity)
 end
 
 local function printFinalSummary(total, failed, byes)
-    local s, ratio = ''
+    local s, ratio
     print('=========================================================')
     if total == 0 or failed == 0 then
         ratio = 1
@@ -399,7 +292,6 @@ LuaUnit.run = function(self, ...)
     if #args > 0 then
         for _,v in ipairs(args) do
             if type(_G[v]) == 'table' then
-                --testClasses[#testClasses+1] = v
                 runners[#runners + 1] = classrunner.new(v)
             end
         end
@@ -409,7 +301,6 @@ LuaUnit.run = function(self, ...)
             and (string.sub(k, 1, 4) == "Test" or 
                  string.sub(k, 1, 4) == "test")
             then
-                --testClasses[#testClasses+1] = k
                 runners[#runners + 1] = classrunner.new(k)
             end
         end
@@ -418,7 +309,15 @@ LuaUnit.run = function(self, ...)
     printFailures(failslist)
     printFinalSummary(runsum, failsum, byesum)
 end
---LuaUnit.Run = run
+LuaUnit.Run = LuaUnit.run -- alias
+
+
+
+-- register below routines to verify correctness
+--LuaUnit._strsplit = strsplit
+LuaUnit._toString = toString
+LuaUnit._wrapValue = wrapValue
+LuaUnit._trimErrMsg = trimErrMsg
 
 
 return LuaUnit

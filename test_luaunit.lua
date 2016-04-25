@@ -1,72 +1,100 @@
---[[ 
-		test_luaunit.lua
+---Description: Tests for the luaunit testing framework
+--
+-- Built upon work by Philippe Fremy <phil@freehackers.org> and others
+--
+-- Author: J. 'KwirkyJ' Smith <kwirkyj.smith0@gmail.com>
+-- Version: 3.0
+-- License: X11 License
 
-Description: Tests for the luaunit testing framework
+local LuaUnit    = require 'luaunit'
+local moretables = require 'moretables'
 
 
-Author: Philippe Fremy <phil@freehackers.org>
-Version: 1.1 
-License: X11 License, see LICENSE.txt
 
---]]
-
--- This is a bit tricky since the test uses the features that it tests.
-
-local LuaUnit = require('luaunit')
+---- verify that assertive library is loaded to global (_G) namespace --------
 
 TestGlobalAsserts = {}
 TestGlobalAsserts.testGlobal = function(self)
     assertEquals(3,3)
+    assertEquals({3, {a=1}, true}, {3, {a=1}, true})
     assertNotEquals({4,3,{2}}, {4,3,{1}}, "nested element mismatch")
     assertString("this is a string!")
     assert_not_function(nil)
-    assertNotEquals(true, 'green')
+    assert_not_equals(true, 'green')
 end
 
 
 
----- Class to show that tests are run in alphabetic order ------------------
-TestToto = {}
-    function TestToto:setUp() end
-    function TestToto:tearDown() end
-    function TestToto:test1() end
-    function TestToto:testb() end
-    function TestToto:test3() end
-    function TestToto:testa() end
-    function TestToto:test5() end
-    function TestToto:test4() end
-    function TestToto:test2() end
+---- Class to show that tests are run in alphabetic order by default ---------
+
+TestOrder = {}
+    function TestOrder:setUp() end
+    function TestOrder:tearDown() end
+    function TestOrder:test1() end
+    function TestOrder:testb() end
+    function TestOrder:test3() end
+    function TestOrder:testa() end
+    function TestOrder:test5() end
+    function TestOrder:test4() end
+    function TestOrder:test2() end
 
 
 
 ---- TEST UTILITY FUNCTIONS (QA) ---------------------------------------------
 
-TestUtil = {}
-TestUtil.test_wrapValue = function(self)
-    local wrap = LuaUnit._wrapValue
-    assertEquals(wrap(), 'nil')
-    assertEquals(wrap(5), '5')
-    assertEquals(wrap('5'), "'5'") -- note inner quotes
-    assertString(wrap(function() end)) -- some function 0xnnnnnn
-    assertEquals(wrap(false), 'false')
+TestWrapValue = {}
+TestWrapValue.test_nil = function(self)
+    assertEquals(LuaUnit._wrapValue(), 'nil')
+end
+TestWrapValue.test_number = function(self)
+    assertEquals(LuaUnit._wrapValue(5), '5')
+end
+TestWrapValue.test_string = function(self)
+    assertEquals(LuaUnit._wrapValue('5'), [=['5']=])
+end
+TestWrapValue.test_function = function(self)
+    local f = function() end
+    assertString(LuaUnit._wrapValue(f), tostring(f)) -- some function 0xNNNNN
+end
+TestWrapValue.test_boolean = function(self)
+    assertEquals(LuaUnit._wrapValue(false), 'false')
+end
+TestWrapValue.test_table = function(self)
     local t = {[3]='b'}
-    assertEquals(wrap(t), LuaUnit._toString(t))
+    assertEquals(LuaUnit._wrapValue(t), moretables.tostring(t))
 end
-TestUtil.test_stripErrMsgHeader = function(self)
-    local strip = LuaUnit._stripErrMsgHeader
-    assertEquals(strip(''), '')
-    assertEquals(strip("string that doesn't match the pattern at all"),
+
+TestTrimErrMsg = {}
+TestTrimErrMsg.test_empty = function(self)
+    assertEquals(LuaUnit._trimErrMsg(''), '')
+end
+TestTrimErrMsg.test_boring_string = function(self) 
+    assertEquals(LuaUnit._trimErrMsg(
+                    "string that doesn't match the pattern at all"),
                  "string that doesn't match the pattern at all")
-    assertEquals(strip("faulty:string: misses line number"),
+end
+TestTrimErrMsg.test_no_line_numbers = function(self)
+    assertEquals(LuaUnit._trimErrMsg(
+                    "faulty:string: misses line number"),
                  "faulty:string: misses line number")
-    assertEquals(strip("\ttrimmed whitespace!\n"),
-                 "trimmed whitespace!") -- a bonus feature
-    assertEquals(strip('someth1ng_thing.ext:123: message thing\n'),
-                'message thing')
-    assertError(strip, 5)
+end
+TestTrimErrMsg.test_whitespace_trimmed = function(self)
+    assertEquals(LuaUnit._trimErrMsg("\ttrimmed whitespace!\n"),
+                 "trimmed whitespace!") 
+end
+TestTrimErrMsg.test_successful = function(self)
+    assertEquals(LuaUnit._trimErrMsg(
+                    'someth1ng_thing.ext:123: message thing\ncontinued\n'),
+                 'message thing\ncontinued') 
+end
+TestTrimErrMsg.test_non_string = function(self)
+    assertError(LuaUnit._trimErrMsg, 5)
 end
 
-
+--TODO: verbosity manipulation
+--TODO: delta manipulation
+--TODO: mechanism to fetch/redirect output
+--TODO: expected-actual / actual-expected toggle
 
 -- LuaUnit:setVerbosity(0) -- output is much less
 -- LuaUnit:setDeltaTolerance(1e-10) -- set default 'almost-equals' delta
