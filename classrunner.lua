@@ -158,7 +158,13 @@ local function runMethod(self, name)
         --return e..'\n'
     end
     
-    local ok, msg = xpcall(self.class[name], _err_handler, self.class)
+    -- local ok, msg = xpcall(self.class[name], _err_handler, self.class)
+
+    -- required because lua5.1 xpcall does not accept arguments
+    local callfn = function()
+        return self.class[name](self.class)
+    end
+    local ok, msg = xpcall(callfn, _err_handler)
     
     if ok then
         self.results:addSuccess(name)
